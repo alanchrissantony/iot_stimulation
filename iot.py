@@ -1,79 +1,67 @@
 import json
-import time
 import random
+import time
 import paho.mqtt.client as mqtt
 from datetime import datetime
 
-# MQTT broker configuration
-BROKER_HOST = "127.0.0.1"  # Use "broker.hivemq.com" for public broker
-BROKER_PORT = 1883
-TOPIC = "restroom/sensor_data"
+# MQTT Broker Configuration
+MQTT_BROKER = "localhost"  # Change this to your broker's address
+MQTT_PORT = 1883
+MQTT_TOPIC = "restroom/sensor_data"
 
-# Sensor simulation configuration
-SENSORS = [
-    {"sensor_id": 1, "sensor_name": "dustbin"},
-    {"sensor_id": 2, "sensor_name": "soap_dispenser"},
-    {"sensor_id": 3, "sensor_name": "paper_towel_1"},
-    {"sensor_id": 4, "sensor_name": "paper_towel_2"},
-    {"sensor_id": 5, "sensor_name": "paper_towel_3"},
-    {"sensor_id": 6, "sensor_name": "people_count_1"},
-    {"sensor_id": 7, "sensor_name": "people_count_2"},
-    {"sensor_id": 8, "sensor_name": "people_count_3"},
-    {"sensor_id": 9, "sensor_name": "people_count_4"},
-]
+# Function to simulate sensor data
+def generate_sensor_data(sensor_id, sensor_name, data_key, min_val, max_val):
+    return {
+        "sensor_id": sensor_id,
+        "sensor_name": sensor_name,
+        "data": {
+            data_key: random.randint(min_val, max_val)
+        },
+        "timestamp": datetime.now().isoformat()
+    }
 
-# Simulate sensor data
-def generate_sensor_data(sensor):
-    """Generate random data for a given sensor."""
-    if "dustbin" in sensor["sensor_name"]:
-        return {"level": random.randint(0, 100)}  # Dustbin level (0-100%)
-    elif "soap_dispenser" in sensor["sensor_name"]:
-        return {"level": random.randint(0, 100)}  # Soap level (0-100%)
-    elif "paper_towel" in sensor["sensor_name"]:
-        return {"level": random.randint(0, 100)}  # Paper towel level (0-100%)
-    elif "people_count" in sensor["sensor_name"]:
-        return {"count": random.randint(0, 50)}  # People count (0-50)
-    else:
-        return {}
-
-# Publish data to MQTT broker
-def publish_sensor_data(client):
+# Function to simulate publishing sensor data
+def simulate_sensor_publishing(client):
     while True:
-        for sensor in SENSORS:
-            sensor_data = {
-                "sensor_id": sensor["sensor_id"],
-                "sensor_name": sensor["sensor_name"],
-                "data": generate_sensor_data(sensor),
-                "timestamp": datetime.now().isoformat(),
-            }
-            message = json.dumps(sensor_data)
-            client.publish(TOPIC, message)
-            print(f"Published: {message}")
-        time.sleep(60)  # Send data every 1 minute
+        # Simulate dustbin level
+        dustbin_data = generate_sensor_data(1, "dustbin", "level", 0, 100)
+        client.publish(MQTT_TOPIC, json.dumps(dustbin_data))
 
-# MQTT connection callback
+        # Simulate soap dispenser level
+        soap_data = generate_sensor_data(2, "soap_dispenser", "level", 0, 100)
+        client.publish(MQTT_TOPIC, json.dumps(soap_data))
+
+        # Simulate paper towel sensors
+        for i in range(3):  # Assume 3 paper towel sensors
+            paper_towel_data = generate_sensor_data(3 + i, f"paper_towel_{i+1}", "level", 0, 100)
+            client.publish(MQTT_TOPIC, json.dumps(paper_towel_data))
+
+        # Simulate people count sensors
+        for i in range(4):  # Assume 4 people count sensors
+            people_count_data = generate_sensor_data(6 + i, f"people_count_{i+1}", "count", 0, 50)
+            client.publish(MQTT_TOPIC, json.dumps(people_count_data))
+
+        # Wait for 1 minute before sending the next batch
+        print(f"Published a batch of sensor data at {datetime.now().isoformat()}")
+        time.sleep(60)
+
+# MQTT Connection Setup
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected to MQTT Broker!")
     else:
         print(f"Failed to connect, return code {rc}")
 
-# Main function
 def main():
     # Create MQTT client
     client = mqtt.Client()
     client.on_connect = on_connect
 
-    # Connect to MQTT broker
-    client.connect(BROKER_HOST, BROKER_PORT, 60)
+    # Connect to the broker
+    client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
-    # Start publishing sensor data
-    try:
-        publish_sensor_data(client)
-    except KeyboardInterrupt:
-        print("Simulation stopped.")
-    finally:
-        client.disconnect()
+    # Start the simulation
+    simulate_sensor_publishing(client)
 
 if __name__ == "__main__":
     main()
